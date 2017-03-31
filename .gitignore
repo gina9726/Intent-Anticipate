@@ -1,0 +1,7 @@
+*.log
+*.png
+*.swp
+*.swo
+*.pyc
+*.swp
+model*
