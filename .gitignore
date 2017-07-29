@@ -4,4 +4,6 @@
 *.swo
 *.pyc
 *.swp
+*.jpg
+*.npy
 model*

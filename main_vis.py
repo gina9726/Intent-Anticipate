@@ -8,6 +8,7 @@ import numpy as np
 from util import discount_cumsum
 from model import RNN
 from parseSeq.parse_sequence import *
+import cv2
 import pdb
 
 #np.random.seed(0)
@@ -151,9 +152,24 @@ class PolicyOptimizer(object):
                         os.makedirs(model_path)
                     saver.save(sess, os.path.join(model_path, 'RL-RNN'), global_step=epoch)
 
+    def get_raw_data(self, data_path):
+        data_path = data_path.replace('NewMean/feats_' + args.user,'intention_data_' + args.user).split(args.feat)[0]
+        right_frames = []
+        left_frames = []
+        right_sensor = []
+        left_sensor = []
+        # read image
+        total_frames = len(os.listdir(os.path.join(data_path, 'right')))
+        for idx in range(1, total_frames+1):            
+            r_frame = cv2.imread(os.path.join(data_path, 'right', 'Image') + str(idx) + '.jpg')
+            l_frame = cv2.imread(os.path.join(data_path, 'left', 'Image') + str(idx) + '.jpg')
+            right_frames.append(r_frame)
+            left_frames.append(l_frame)
+        return np.array(right_frames), np.array(left_frames)
+        
     def test(self):
 
-        global test_feat, test_label
+        global test_feat, test_label, test_path
         total = 0
         corrects = 0
         avg_action = 0.0
@@ -193,6 +209,47 @@ class PolicyOptimizer(object):
             print "current accuracy =", (corrects/float(total))*100
             print '-----------------------------------------'
 
+            # visualize
+            trigger = []
+            right_frames, left_frames = self.get_raw_data(test_path[i])
+            save_path = os.path.join('result', args.user, test_path[i].split('/')[5], test_path[i].split('/')[6])
+            right_path = os.path.join(save_path, 'right')
+            left_path = os.path.join(save_path, 'left')
+            if not os.path.exists(save_path):
+                os.makedirs(right_path)
+                os.makedirs(left_path)
+            frame_idx = 0
+            start_idx = 6
+            for _ in range(3):
+                fileName = str(frame_idx) + '.jpg'
+                trigger.append(0)
+                #cv2.imwrite(os.path.join(right_path, fileName) , cv2.cvtColor(right_frames[frame_idx+start_idx], cv2.COLOR_BGR2GRAY))
+                #cv2.imwrite(os.path.join(left_path, fileName), cv2.cvtColor(left_frames[frame_idx+start_idx], cv2.COLOR_BGR2GRAY))
+                #cv2.imshow('right hand', cv2.cvtColor(right_frames[frame_idx], cv2.COLOR_BGR2GRAY))
+                #cv2.imshow('left hand', cv2.cvtColor(left_frames[frame_idx], cv2.COLOR_BGR2GRAY))
+                frame_idx += 1
+
+            for feat_idx in range(len(test_feat[i])):
+                for f in range(1, 4):
+                    fileName = str(frame_idx) + '.jpg'
+                    cv2.putText(right_frames[frame_idx+start_idx], str(feat_idx+1), (20,80), 0, 2, (0,0,255), 8)    
+                    cv2.putText(left_frames[frame_idx+start_idx], str(feat_idx+1), (20,80), 0, 2, (0,0,255), 8)    
+                    if actions[0, feat_idx] == 1:
+                        trigger.append(f)
+                        #cv2.imwrite(os.path.join(right_path, fileName) , right_frames[frame_idx+start_idx])
+                        #cv2.imwrite(os.path.join(left_path, fileName), left_frames[frame_idx+start_idx])
+                        #cv2.imshow('right hand', right_frames[frame_idx])
+                        #cv2.imshow('left hand', left_frames[frame_idx])
+                    else:
+                        trigger.append(0)
+                        #cv2.imwrite(os.path.join(right_path, fileName) , cv2.cvtColor(right_frames[frame_idx+start_idx], cv2.COLOR_BGR2GRAY))
+                        #cv2.imwrite(os.path.join(left_path, fileName), cv2.cvtColor(left_frames[frame_idx+start_idx], cv2.COLOR_BGR2GRAY))
+                        #cv2.imshow('right hand', cv2.cvtColor(right_frames[frame_idx], cv2.COLOR_BGR2GRAY))
+                        #cv2.imshow('left hand', cv2.cvtColor(left_frames[frame_idx], cv2.COLOR_BGR2GRAY))
+                    if cv2.waitKey(10) >= 0:
+                        break
+                    frame_idx += 1
+            np.save(save_path + '/trigger.npy', trigger)
 def parse_args():
     """
     Parse input arguments
@@ -323,7 +380,7 @@ def get_data(data_path):
 
     for p in test_path:
         print 'test path: ', p
-    return np.array(train_feat), np.array(train_label), np.array(test_feat), np.array(test_label)
+    return np.array(train_feat), np.array(train_label), np.array(test_feat), np.array(test_label), np.array(test_path)
 
 ############## Train Parameters #################
 #RNN
@@ -343,9 +400,10 @@ plus_rewards = [0, args.plus_reward]
 minus_rewards = [0, args.minus_reward] 
 ##################################################
 
-data_path='/home/james/Desktop/extract_intention_feat/NewMean/feats_' + args.user
+data_path='/media/Disk2/NewMean/feats_' + args.user
+#data_path='/home/james/Desktop/extract_intention_feat/NewMean/feats_' + args.user
 # Load data
-train_feat, train_label, test_feat, test_label = get_data(data_path)
+train_feat, train_label, test_feat, test_label, test_path = get_data(data_path)
 print '# of training data: ', len(train_feat)
 print '# of testing data: ', len(test_feat)
 print args
