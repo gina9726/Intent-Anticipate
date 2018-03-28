@@ -1,5 +1,4 @@
 # coding: utf-8
-
 import tensorflow as tf
 import argparse
 import sys
@@ -75,7 +74,7 @@ class PolicyOptimizer(object):
             advantages=advantages
         )
 
-    def train(self, model_path = 'model/combFT_2_w_nrm_256_cat'):
+    def train(self, model_path):
         global train_feat, train_label
         
         with tf.device('/cpu:0'):
@@ -87,12 +86,12 @@ class PolicyOptimizer(object):
         exp = lambda n, x: np.exp(np.log(0.1)/n*(n-x))
 
         for epoch in range(1, n_epochs):
-            #shuffle data
+            # shuffle data
             index = np.random.permutation(range(len(train_feat)))
             train_feat = train_feat[index]
             train_label = train_label[index]
             print 'epoch:', epoch
-            #batch
+            # batch
             for start,end in zip(
                     range(0, dataLen, batch_size),
                     range(batch_size, dataLen+1, batch_size)):
@@ -173,12 +172,12 @@ class PolicyOptimizer(object):
             probs_buff, actions, rewards, final_rewards, correct, predict = self.RNN_model.test(image, sensor, feat_mask, label, action_thresh)
 
             idx = np.where(feat_mask == 1) # index for video length
-            ##default motion
+            ## default motion
             action_ratio = (actions[idx[0][0],:idx[1][0]].sum())/(idx[1][0] + 1) 
             if np.isnan(action_ratio):
                 action_ratio = 0
             avg_action += action_ratio
-            #calculate accuracy
+            # calculate accuracy
             label_intention = label[0][-1]
             predict_intention = predict[0][-1]
             if correct[0][0]:
@@ -204,11 +203,9 @@ def parse_args():
                         help='train or test',
                         default='train', type=str)
     parser.add_argument('--net', dest='model',
-                        help='model for training or testing',
-                        default='combFT_2_w_nrm_256_cat', type=str)
+                        help='model for training or testing', type=str)
     parser.add_argument('--feat', dest='feat',
-                        help='select feature directory',
-                        default='Res50_nocalib_w_nrm', type=str)
+                        help='select feature directory', type=str)
     parser.add_argument('--percent', dest='percent',
                         help='percentage of input lenght',
                         default=1.0, type=float)
@@ -282,7 +279,7 @@ def get_data(data_path):
                     reduce_order=seqid2int[:,0]*Table
                     if reduce_order[idx] != 0:
                         tmp_feat.append(np.concatenate((featR, featL), axis=1)) 
-                        tmp_label.append(seqid2int[idx]) #intention only
+                        tmp_label.append(seqid2int[idx]) # intention only
 
                         if args.percent != 1:
                             x = int(np.ceil(len(tmp_feat[-1])*args.percent))
@@ -326,7 +323,7 @@ def get_data(data_path):
     return np.array(train_feat), np.array(train_label), np.array(test_feat), np.array(test_label)
 
 ############## Train Parameters #################
-#RNN
+# RNN
 dim_hidden = 256
 dim_feat = 5120
 dim_image = 4096
@@ -335,7 +332,7 @@ n_feat_step = 0
 n_label_step = 0
 n_epochs = 501
 batch_size = 40
-#Policy
+# Policy
 learning_rate = 0.001
 policy_hidden_dim = 200
 policy_out_dim = 2
@@ -343,7 +340,7 @@ plus_rewards = [0, args.plus_reward]
 minus_rewards = [0, args.minus_reward] 
 ##################################################
 
-data_path='/home/james/Desktop/extract_intention_feat/NewMean/feats_' + args.user
+data_path='/path/to/your/data'
 # Load data
 train_feat, train_label, test_feat, test_label = get_data(data_path)
 print '# of training data: ', len(train_feat)
@@ -351,7 +348,7 @@ print '# of testing data: ', len(test_feat)
 print args
 
 # Session
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.25)
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.25) # optional
 sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 optimizer_RNN = tf.train.AdamOptimizer(learning_rate=learning_rate/10)
 optimizer_policy = tf.train.AdamOptimizer(learning_rate=learning_rate)
